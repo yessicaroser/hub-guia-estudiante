@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía del Estudiante — HUB DI UNLa</title>
+  <meta name="description"
+    content="Plataforma de guía y progreso para estudiantes del HUB de Incubación de Diseño UNLa." />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            teal: { 400: '#2dd4bf', 500: '#0E7469', 600: '#0a5c52', 900: '#042f2a' },
+            hub: { dark: '#111', dark2: '#1a1a1a', dark3: '#222', bg: '#f9f7f4' }
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- CSS propio -->
+  <link rel="stylesheet" href="/css/guia.css" />
+
+  <style>
+    /* SVG nodos */
+    .hub-line {
+      stroke: #d0d0d0;
+      stroke-width: 1.5;
+      fill: none;
+      stroke-dasharray: 120;
+      stroke-dashoffset: 120;
+      transition: stroke .4s, stroke-width .4s, opacity .4s;
+    }
+
+    .hub-line.drawn {
+      animation: drawLine .5s ease forwards;
+    }
+
+    .hub-line.hub-line--active {
+      stroke: #0E7469;
+      stroke-width: 2.5;
+      stroke-dashoffset: 0;
+    }
+
+    .hub-line.hub-line--done {
+      stroke: #0E7469;
+      stroke-width: 1.5;
+      opacity: .4;
+      stroke-dashoffset: 0;
+    }
+
+    .hub-line.hub-line--locked {
+      stroke: #e0e0e0;
+      stroke-dashoffset: 0;
+    }
+
+    .hub-nc {
+      fill: #111;
+      opacity: 0;
+    }
+
+    .hub-nc.drawn {
+      animation: popIn .4s cubic-bezier(.34, 1.56, .64, 1) .4s forwards;
+    }
+
+    .hub-node {
+      fill: #e4e4e4;
+      stroke: #ccc;
+      stroke-width: 1.5;
+      cursor: pointer;
+      opacity: 0;
+      transition: fill .3s, stroke .3s, filter .3s;
+    }
+
+    .hub-node.drawn {
+      animation: popIn .45s cubic-bezier(.34, 1.56, .64, 1) forwards;
+    }
+
+    .hub-node:not(.hub-node--locked):hover {
+      fill: #ccc;
+    }
+
+    .hub-node.hub-node--active {
+      fill: #111;
+      stroke: #0E7469;
+      stroke-width: 2.5;
+      filter: drop-shadow(0 0 8px rgba(14, 116, 105, .5));
+    }
+
+    .hub-node.hub-node--done {
+      fill: #0E7469;
+      stroke: #0E7469;
+    }
+
+    .hub-node.hub-node--locked {
+      fill: #ececec;
+      stroke: #ddd;
+      cursor: not-allowed;
+      opacity: 1 !important;
+    }
+
+    .hub-node-label {
+      font-size: 10px;
+      font-weight: 700;
+      fill: #fff;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+
+    .hub-node-label.hub-label--show {
+      opacity: 1;
+    }
+
+    .hub-node-lock {
+      font-size: 11px;
+      fill: #bbb;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+
+    .hub-node-lock.hub-label--show {
+      opacity: 1;
+    }
+
+    .hub-ring {
+      fill: none;
+      stroke: #0E7469;
+      stroke-width: 2;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+
+    .hub-ring.hub-ring--show {
+      opacity: 1;
+    }
+
+    .hub-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ddd;
+      transition: background .3s, transform .3s;
+    }
+
+    .hub-dot.hub-dot--done {
+      background: #0E7469;
+    }
+
+    .hub-dot.hub-dot--active {
+      background: #111;
+      transform: scale(1.4);
+    }
+
+    .hub-dot.hub-dot--locked {
+      background: #e8e8e8;
+    }
+
+    .hub-hint {
+      font-size: 11px;
+      color: #aaa;
+      text-align: center;
+      margin-top: 10px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .hub-hint.hub-hint--off {
+      opacity: 0;
+      animation: none;
+    }
+  </style>
+</head>
+
+<body class="bg-hub-bg font-sans">
+
+  <!-- ============ NAV ============ -->
+  <nav
+    class="bg-black text-white px-6 py-3 flex items-center justify-between fixed top-0 left-0 right-0 z-50 shadow-md">
+    <div class="flex items-center gap-3">
+      <a href="/guia-estudiante.html" class="text-white/50 hover:text-white transition text-sm">
+        <i class="fas fa-arrow-left mr-2"></i>Volver al sitio
+      </a>
+      <span class="text-white/20">|</span>
+      <span class="text-sm font-semibold tracking-wide">HUB DI UNLa — Guía del Estudiante</span>
+    </div>
+    <button onclick="HubUI.resetProgress()"
+      class="text-xs text-white/25 hover:text-white/50 transition flex items-center gap-1">
+      <i class="fas fa-rotate-left"></i> Reiniciar progreso
+    </button>
+  </nav>
+
+  <div class="pt-16">
+
+    <!-- ============ HERO ============ -->
+    <section class="bg-black text-white py-16 px-6">
+      <div class="max-w-4xl mx-auto">
+
+        <!-- Progreso global -->
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-xs font-bold tracking-widest text-teal-500 uppercase">Tu progreso</p>
+          <span class="text-xs font-bold text-teal-500" id="hub-progress-pct">0%</span>
+        </div>
+        <div class="hub-progress-bar mb-2">
+          <div class="hub-progress-fill" id="hub-progress-fill" style="width:0%"></div>
+        </div>
+        <p class="text-xs text-white/30 mb-12" id="hub-modules-completed">0 / 5 módulos completados</p>
+
+        <div class="flex flex-col lg:flex-row items-center gap-12">
+
+          <!-- Diagrama nodos -->
+          <div class="flex-shrink-0 flex flex-col items-center">
+            <div style="width:300px;height:300px;position:relative;">
+              <svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg"
+                style="width:100%;height:100%;overflow:visible">
+
+                <!-- Líneas -->
+                <line id="hub-l1" class="hub-line" x1="140" y1="140" x2="140" y2="38" />
+                <line id="hub-l2" class="hub-line" x1="140" y1="140" x2="234" y2="192" />
+                <line id="hub-l3" class="hub-line" x1="140" y1="140" x2="196" y2="262" />
+                <line id="hub-l4" class="hub-line" x1="140" y1="140" x2="84" y2="262" />
+                <line id="hub-l5" class="hub-line" x1="140" y1="140" x2="46" y2="192" />
+
+                <!-- Centro -->
+                <circle id="hub-nc" class="hub-nc" cx="140" cy="140" r="22" />
+                <circle id="hub-nc-dot" cx="140" cy="140" r="5" fill="#0E7469" style="opacity:0" />
+                <circle id="hub-ncs1" cx="129" cy="135" r="3" fill="#fff" style="opacity:0" />
+                <circle id="hub-ncs2" cx="151" cy="135" r="3" fill="#fff" style="opacity:0" />
+                <circle id="hub-ncs3" cx="140" cy="149" r="3" fill="#fff" style="opacity:0" />
+                <line id="hub-ncl1" x1="140" y1="140" x2="129" y2="135" stroke="#fff" stroke-width="1.2"
+                  style="opacity:0" />
+                <line id="hub-ncl2" x1="140" y1="140" x2="151" y2="135" stroke="#fff" stroke-width="1.2"
+                  style="opacity:0" />
+                <line id="hub-ncl3" x1="140" y1="140" x2="140" y2="149" stroke="#fff" stroke-width="1.2"
+                  style="opacity:0" />
+
+                <!-- Anillos completado -->
+                <circle id="hub-ring1" class="hub-ring" cx="140" cy="38" r="30" />
+                <circle id="hub-ring2" class="hub-ring" cx="234" cy="192" r="30" />
+                <circle id="hub-ring3" class="hub-ring" cx="196" cy="262" r="30" />
+                <circle id="hub-ring4" class="hub-ring" cx="84" cy="262" r="30" />
+                <circle id="hub-ring5" class="hub-ring" cx="46" cy="192" r="30" />
+
+                <!-- Nodos satélite -->
+                <circle id="hub-n1" class="hub-node" cx="140" cy="38" r="24" onclick="hubClickNode(0)"
+                  style="transform-origin:140px 38px" />
+                <text id="hub-t1" class="hub-node-label" x="140" y="38">01</text>
+                <text id="hub-lk1" class="hub-node-lock" x="140" y="38">🔒</text>
+
+                <circle id="hub-n2" class="hub-node" cx="234" cy="192" r="24" onclick="hubClickNode(1)"
+                  style="transform-origin:234px 192px" />
+                <text id="hub-t2" class="hub-node-label" x="234" y="192">02</text>
+                <text id="hub-lk2" class="hub-node-lock" x="234" y="192">🔒</text>
+
+                <circle id="hub-n3" class="hub-node" cx="196" cy="262" r="24" onclick="hubClickNode(2)"
+                  style="transform-origin:196px 262px" />
+                <text id="hub-t3" class="hub-node-label" x="196" y="262">03</text>
+                <text id="hub-lk3" class="hub-node-lock" x="196" y="262">🔒</text>
+
+                <circle id="hub-n4" class="hub-node" cx="84" cy="262" r="24" onclick="hubClickNode(3)"
+                  style="transform-origin:84px 262px" />
+                <text id="hub-t4" class="hub-node-label" x="84" y="262">04</text>
+                <text id="hub-lk4" class="hub-node-lock" x="84" y="262">🔒</text>
+
+                <circle id="hub-n5" class="hub-node" cx="46" cy="192" r="24" onclick="hubClickNode(4)"
+                  style="transform-origin:46px 192px" />
+                <text id="hub-t5" class="hub-node-label" x="46" y="192">05</text>
+                <text id="hub-lk5" class="hub-node-lock" x="46" y="192">🔒</text>
+
+              </svg>
+            </div>
+
+            <p class="hub-hint" id="hub-hint">Tocá el nodo 01 para empezar</p>
+            <div class="flex gap-2 justify-center mt-2">
+              <div class="hub-dot" id="hub-d1"></div>
+              <div class="hub-dot" id="hub-d2"></div>
+              <div class="hub-dot" id="hub-d3"></div>
+              <div class="hub-dot" id="hub-d4"></div>
+              <div class="hub-dot" id="hub-d5"></div>
+            </div>
+          </div>
+
+          <!-- Texto intro -->
+          <div class="flex-1 max-w-lg">
+            <p class="text-xs font-bold tracking-widest text-teal-500 uppercase mb-3">Recorrido guiado</p>
+            <h1 class="text-3xl lg:text-4xl font-bold leading-tight mb-6">
+              Guía del<br>Estudiante
+            </h1>
+            <p class="text-white/50 text-sm leading-relaxed mb-6">
+              5 módulos para llevar tu proyecto desde la idea inicial hasta su gestión dentro del HUB. Completá las
+              tareas de cada módulo para desbloquear el siguiente.
+            </p>
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center gap-3 text-sm text-white/40">
+                <i class="fas fa-lock-open text-teal-500 w-4"></i>
+                <span>El Módulo 01 ya está disponible para vos</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm text-white/40">
+                <i class="fas fa-check-circle text-teal-500 w-4"></i>
+                <span>Completá todas las tareas para avanzar</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm text-white/40">
+                <i class="fas fa-rotate text-teal-500 w-4"></i>
+                <span>Tu progreso se guarda automáticamente</span>
+              </div>
+              <div class="flex items-center gap-3 text-sm text-white/40">
+                <i class="fas fa-file-pdf text-teal-500 w-4"></i>
+                <span>PDFs descargables en cada módulo</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LISTA MÓDULOS (referencia rápida) ============ -->
+    <section class="py-16 px-6 bg-hub-bg">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-xs font-bold tracking-widest text-teal-500 uppercase mb-8 text-center">Resumen de módulos</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="hub-module-cards">
+          <!-- Generado por JS -->
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /pt-16 -->
+
+
+  <!-- ============ MODAL CONTENIDO ============ -->
+  <div class="hub-overlay" id="hub-ov-content" onclick="if(event.target===this)HubUI.tryCloseContent()">
+    <div class="hub-modal">
+
+      <div class="mhdr" id="hub-mhdr" style="padding:24px 24px 20px;flex-shrink:0;transition:background .3s">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div>
+            <p style="font-size:10px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:4px"
+              id="hub-mhdr-num"></p>
+            <p style="font-size:20px;font-weight:700;color:#fff" id="hub-mhdr-title"></p>
+            <p style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px" id="hub-mhdr-sub"></p>
+          </div>
+          <button class="hub-modal-close" onclick="HubUI.tryCloseContent()"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="hub-mchips"></div>
+      </div>
+
+      <div class="hub-tabs" id="hub-mtabs"></div>
+
+      <div style="padding:20px 24px 24px;overflow-y:auto;flex-grow:1" id="hub-mbody"></div>
+
+      <div
+        style="padding:14px 24px 18px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div style="display:flex;gap:8px">
+          <button class="hub-btn hub-btn--ghost" id="hub-btn-prev" onclick="HubUI.navMod(-1)">← Anterior</button>
+          <button class="hub-btn hub-btn--ghost" id="hub-btn-next" onclick="HubUI.navMod(1)">Siguiente →</button>
+        </div>
+        <button class="hub-btn hub-btn--dark" onclick="HubUI.tryCloseContent()">
+          Ver tareas <i class="fas fa-arrow-right ml-1"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ============ MODAL TAREAS ============ -->
+  <div class="hub-overlay" id="hub-ov-tasks" onclick="if(event.target===this)HubUI.closeTasks()">
+    <div class="hub-modal hub-modal--sm">
+
+      <div style="padding:22px 24px 18px;flex-shrink:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <p
+              style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#0E7469;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+              <span style="width:6px;height:6px;border-radius:50%;background:#0E7469;display:inline-block"></span>
+              Tareas del módulo
+            </p>
+            <p style="font-size:17px;font-weight:700;color:#fff;margin-bottom:2px" id="hub-task-title"></p>
+            <p style="font-size:12px;color:rgba(255,255,255,.4)" id="hub-task-sub"></p>
+          </div>
+          <button class="hub-modal-close" onclick="HubUI.closeTasks()"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+
+      <!-- Mini barra progreso tareas -->
+      <div style="margin:0 24px 16px;background:rgba(255,255,255,.06);border-radius:8px;padding:12px 14px">
+        <div
+          style="display:flex;justify-content:space-between;font-size:10.5px;color:rgba(255,255,255,.4);margin-bottom:8px">
+          <p>Completadas</p>
+          <strong style="color:#0E7469" id="hub-task-count">0 / 0</strong>
+        </div>
+        <div class="hub-progress-bar">
+          <div class="hub-progress-fill" id="hub-task-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Lista tareas -->
+      <div style="padding:0 24px 16px;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto"
+        id="hub-task-list"></div>
+
+      <!-- Footer -->
+      <div
+        style="padding:14px 24px 20px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:10px">
+        <p id="hub-task-msg" class="text-xs text-white/40 text-center leading-relaxed"></p>
+        <button id="hub-btn-complete" class="hub-btn hub-btn--primary w-full justify-center">
+          <i class="fas fa-check-circle"></i> Marcar módulo como completado
+        </button>
+        <button onclick="HubUI.goBackToContent()" class="hub-btn hub-btn--ghost w-full justify-center text-xs">
+          ← Volver al contenido
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="hub-toast" id="hub-toast"></div>
+
+  <!-- ============ SCRIPTS ============ -->
+  <script src="/js/data.js"></script>
+  <script src="/js/state.js"></script>
+  <script src="/js/ui.js"></script>
+
+  <!-- Generar cards de resumen -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const grid = document.getElementById('hub-module-cards');
+      if (!grid) return;
+      const s = HubState.load();
+      HUB_MODULOS.forEach((m, i) => {
+        const unlocked = HubState.isUnlocked(s, i);
+        const completed = HubState.isCompleted(s, i);
+        const done = HubState.tasksCount(s, i);
+        const total = m.tareas.length;
+        grid.innerHTML += `
+          <div class="rounded-xl p-5 border cursor-pointer transition-all
+            ${completed ? 'bg-teal-500/10 border-teal-500/30 hover:border-teal-500/60'
+            : unlocked ? 'bg-white border-gray-200 hover:border-gray-400 shadow-sm'
+              : 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'}"
+            onclick="${unlocked ? `hubClickNode(${i})` : ''}">
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs font-bold tracking-widest ${completed ? 'text-teal-500' : unlocked ? 'text-gray-400' : 'text-gray-400'} uppercase">
+                Módulo ${m.num}
+              </span>
+              ${completed ? '<i class="fas fa-check-circle text-teal-500 text-sm"></i>'
+            : unlocked ? '<i class="fas fa-lock-open text-gray-300 text-sm"></i>'
+              : '<i class="fas fa-lock text-gray-300 text-sm"></i>'}
+            </div>
+            <p class="font-semibold text-sm mb-1 ${unlocked ? 'text-gray-900' : 'text-gray-500'}">${m.title}</p>
+            <p class="text-xs ${unlocked ? 'text-gray-500' : 'text-gray-400'} mb-3">${m.sub}</p>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full bg-teal-500 rounded-full transition-all"
+                     style="width:${total > 0 ? Math.round((done / total) * 100) : 0}%"></div>
+              </div>
+              <span class="text-xs text-gray-400">${done}/${total}</span>
+            </div>
+          </div>`;
+      });
+    });
+  </script>
+
+</body>
+
+</html>
